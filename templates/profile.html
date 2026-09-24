@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+    <title>Your Music Profile</title>
+</head>
+
+<body>
+
+    <h1>Hello, {{ user["display_name"] }}!</h1>
+
+    <h2>Your Top Artists</h2>
+
+    <ol>
+        {% for artist in top_artists %}
+            <li>
+                <a href="/artist/{{ artist['id'] }}">
+                    {{ artist["name"] }}
+                </a>
+            </li>
+{% endfor %}
+    </ol>
+
+
+    <h2>Your Top Tracks</h2>
+
+    <ol>
+        {% for track in top_tracks %}
+            <li>
+                {{ track["name"] }}
+                —
+                {{ track["artists"][0]["name"] }}
+            </li>
+        {% endfor %}
+    </ol>
+
+    <h2>Explore Your Music</h2>
+
+    <a href="/recommendations">
+        Generate Recommendations
+    </a>
+
+</body>
+</html>

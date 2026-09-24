@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+    <title>{{ album["name"] }}</title>
+</head>
+
+<body>
+
+    <a href="/artist/{{ album['artists'][0]['id'] }}">
+        ← Back to {{ album["artists"][0]["name"] }}
+    </a>
+
+    <h1>{{ album["name"] }}</h1>
+
+    <p>
+        {{ album["artists"][0]["name"] }}
+        •
+        {{ album["release_date"] }}
+    </p>
+
+    <h2>Tracks</h2>
+
+    <ol>
+        {% for track in tracks %}
+            <li>
+                {{ track["name"] }}
+            </li>
+        {% endfor %}
+    </ol>
+
+</body>
+</html>

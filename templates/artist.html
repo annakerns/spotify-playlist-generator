@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+    <title>{{ artist["name"] }}</title>
+</head>
+
+<body>
+
+    <a href="/profile">← Back</a>
+
+    <h1>{{ artist["name"] }}</h1>
+
+    <h2>Albums</h2>
+
+    <ul>
+        {% for album in albums %}
+            <li>
+                <a href="/album/{{ album['id'] }}">
+                    {{ album["name"] }}
+                </a>
+
+                ({{ album["release_date"] }})
+            </li>
+        {% endfor %}
+    </ul>
+
+    <h2>Similar Artists</h2>
+
+    <ul>
+        {% for similar in similar_artists %}
+            <li>
+                <a href="/artist/{{ similar['id'] }}">
+                    {{ similar["name"] }}
+                </a>
+
+                — similarity: {{ "%.2f"|format(similar["match"]) }}
+            </li>
+        {% endfor %}
+    </ul>
+
+
+    <h2>Potential Discography Discoveries</h2>
+
+    <p>
+        Tracks from this artist's albums that aren't in your Spotify top tracks.
+    </p>
+
+    <ol>
+        {% for track in candidates %}
+            <li>
+                {{ track["name"] }}
+                —
+                {{ track["album_name"] }}
+            </li>
+        {% endfor %}
+    </ol>
+
+</body>
+</html>

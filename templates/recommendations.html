@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+    <title>Recommendations</title>
+</head>
+
+<body>
+
+    <a href="/profile">← Back</a>
+
+    <h1>Recommendation Candidates</h1>
+
+    <p>
+        These tracks were discovered from your favorite
+        artists' discographies.
+    </p>
+
+    <ol>
+        {% for track in candidates %}
+            <li>
+                <strong>{{ track["name"] }}</strong>
+
+                — {{ track["artist"] }}
+
+                — {{ track["album"] }}
+
+                — score:
+                {{ "%.3f"|format(track["score"]) }}
+            </li>
+        {% endfor %}
+    </ol>
+
+</body>
+</html>
