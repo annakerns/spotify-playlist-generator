@@ -11,6 +11,27 @@
 
     <h1>Recommendation Candidates</h1>
 
+    <h2>Proposed Playlist</h2>
+
+    <p>
+        A balanced selection from your favorite artists' discographies.
+    </p>
+
+    <ol>
+        {% for track in selected_tracks %}
+            <li>
+                <strong>{{ track["name"] }}</strong>
+                — {{ track["artist"] }}
+                — {{ track["album"] }}
+                — score: {{ "%.3f"|format(track["score"]) }}
+            </li>
+        {% endfor %}
+    </ol>
+
+    <hr>
+
+    <h2>All Candidates</h2>
+
     <p>
         These tracks were discovered from your favorite
         artists' discographies.

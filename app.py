@@ -267,9 +267,17 @@ def recommendations():
         reverse=True
     )
 
+    selected_tracks = select_balanced_tracks(
+        candidates,
+        playlist_size=30,
+        max_per_artist=5,
+        max_per_album=3
+    )
+
     return render_template(
         "recommendations.html",
-        candidates=candidates
+        candidates=candidates,
+        selected_tracks=selected_tracks
     )
 
 def build_artist_profile(spotify, artist):
@@ -415,6 +423,40 @@ def build_favorite_artist_candidates(
             })
 
     return candidates
+
+def select_balanced_tracks(
+    candidates,
+    playlist_size=30,
+    max_per_artist=5,
+    max_per_album=3
+):
+    selected = []
+
+    artist_counts = {}
+    album_counts = {}
+
+    for track in candidates:
+        artist = track["artist"]
+        album = track["album"]
+
+        artist_count = artist_counts.get(artist, 0)
+        album_count = album_counts.get(album, 0)
+
+        if artist_count >= max_per_artist:
+            continue
+
+        if album_count >= max_per_album:
+            continue
+
+        selected.append(track)
+
+        artist_counts[artist] = artist_count + 1
+        album_counts[album] = album_count + 1
+
+        if len(selected) >= playlist_size:
+            break
+
+    return selected
 
 
 if __name__ == "__main__":
