@@ -28,6 +28,22 @@
         {% endfor %}
     </ol>
 
+    <form action="/create-playlist" method="POST">
+
+        {% for track in selected_tracks %}
+            <input
+                type="hidden"
+                name="track_ids"
+                value="{{ track['id'] }}"
+            >
+        {% endfor %}
+
+        <button type="submit">
+            Create Playlist on Spotify
+        </button>
+
+    </form>
+
     <hr>
 
     <h2>All Candidates</h2>
