@@ -50,16 +50,26 @@ def get_discography_candidates(spotify, artist_id, known_track_ids):
         limit=10
     )
 
-    for album in albums["items"]:
+    for album_rank, album in enumerate(albums["items"], start=1):
         tracks = spotify.album_tracks(album["id"], limit=50)
 
         for track in tracks["items"]:
+
+            if not track["artists"]:
+                continue
+
+            primary_artist_id = track["artists"][0]["id"]
+
+            if primary_artist_id != artist_id:
+                continue
+
             if track["id"] not in known_track_ids:
                 candidates.append({
                     "id": track["id"],
                     "name": track["name"],
                     "album_name": album["name"],
-                    "album_id": album["id"]
+                    "album_id": album["id"],
+                    "album_rank": album_rank
                 })
 
     return candidates
@@ -110,8 +120,6 @@ def profile():
         spotify,
         first_artist
     )
-    # this was for debugging
-   # print(artist_profile)
 
     top_tracks = spotify.current_user_top_tracks(
         limit=10,
@@ -225,6 +233,20 @@ def recommendations():
         time_range="medium_term"
     )["items"]
 
+    similar_artist_pool = build_similar_artist_pool(
+        spotify,
+        top_artists,
+        similar_per_artist=5
+    )
+
+    for artist in similar_artist_pool:
+        artist["score"] = score_similar_artist(artist)
+
+    similar_artist_pool.sort(
+        key=lambda artist: artist["score"],
+        reverse=True
+    )
+
     top_tracks = spotify.current_user_top_tracks(
         limit=50,
         time_range="medium_term"
@@ -245,6 +267,15 @@ def recommendations():
         known_track_ids,
         favorite_album_ids
     )
+
+    similar_candidates = build_similar_artist_candidates(
+        spotify,
+        similar_artist_pool,
+        known_track_ids,
+        artist_limit=5
+    )
+
+    candidates.extend(similar_candidates)
 
     unique_candidates = {}
 
@@ -341,7 +372,6 @@ def find_spotify_artist(spotify, artist_name):
         return None
 
     return artists[0]
-
 def get_similar_spotify_artists(spotify, artist_name, limit=10):
     lastfm_artists = get_similar_artists(artist_name, limit)
 
@@ -353,12 +383,15 @@ def get_similar_spotify_artists(spotify, artist_name, limit=10):
             lastfm_artist["name"]
         )
 
-        if spotify_artist:
-            similar_artists.append({
-                "id": spotify_artist["id"],
-                "name": spotify_artist["name"],
-                "match": lastfm_artist["match"]
-            })
+        if spotify_artist is None:
+            continue
+
+        similar_artists.append({
+            "id": spotify_artist["id"],
+            "name": spotify_artist["name"],
+            "lastfm_name": lastfm_artist["name"],
+            "match": lastfm_artist["match"]
+        })
 
     return similar_artists
 
@@ -458,6 +491,130 @@ def select_balanced_tracks(
 
     return selected
 
+def normalize_artist_name(name):
+    return (
+        name.lower()
+        .replace("$", "s")
+        .replace(".", "")
+        .replace("-", " ")
+        .strip()
+    )
+
+def build_similar_artist_pool(spotify, top_artists, similar_per_artist=5):
+    top_artist_ids = {
+        artist["id"] for artist in top_artists
+    }
+
+    top_artist_names = {
+        normalize_artist_name(artist["name"])
+        for artist in top_artists
+    }
+
+    similar_artist_pool = {}
+
+    for rank, source_artist in enumerate(top_artists, start=1):
+
+        similar_artists = get_similar_spotify_artists(
+            spotify,
+            source_artist["name"],
+            limit=similar_per_artist
+        )
+
+        for similar in similar_artists:
+
+            if (
+                similar["id"] in top_artist_ids
+                or normalize_artist_name(similar["name"]) in top_artist_names
+            ):
+                continue
+
+            artist_id = similar["id"]
+
+            connection = {
+                "source_artist": source_artist["name"],
+                "source_artist_rank": rank,
+                "similarity": similar["match"]
+            }
+
+            if artist_id not in similar_artist_pool:
+                similar_artist_pool[artist_id] = {
+                    "id": artist_id,
+                    "name": similar["name"],
+                    "connections": []
+                }
+
+            similar_artist_pool[artist_id]["connections"].append(
+                connection
+            )
+
+    return list(similar_artist_pool.values())
+
+def score_similar_artist(artist):
+    connection_scores = []
+
+    for connection in artist["connections"]:
+        artist_affinity = 1 / connection["source_artist_rank"]
+        similarity = connection["similarity"]
+
+        connection_score = (
+            0.5 * artist_affinity +
+            0.5 * similarity
+        )
+
+        connection_scores.append(connection_score)
+
+    best_connection = max(connection_scores)
+
+    extra_connections = len(connection_scores) - 1
+    connection_bonus = min(extra_connections * 0.05, 0.15)
+
+    return min(best_connection + connection_bonus, 1.0)
+
+def build_similar_artist_candidates(
+    spotify,
+    similar_artist_pool,
+    known_track_ids,
+    artist_limit=5
+):
+    candidates = []
+
+    selected_artists = similar_artist_pool[:artist_limit]
+
+    for artist in selected_artists:
+
+        tracks = get_discography_candidates(
+            spotify,
+            artist["id"],
+            known_track_ids
+        )
+
+        best_connection = get_best_artist_connection(artist)
+
+        for track in tracks:
+            candidates.append({
+                "id": track["id"],
+                "name": track["name"],
+                "artist": artist["name"],
+                "album": track["album_name"],
+
+                # This tells us WHY this track was recommended.
+                "source_artist": best_connection["source_artist"],
+                "reason": "similar_artist_discovery",
+
+                "similar_artist_score": artist["score"],
+                "score": artist["score"]
+            })
+
+    return candidates
+
+def get_best_artist_connection(artist):
+    return max(
+        artist["connections"],
+        key=lambda connection: (
+            0.5 * (1 / connection["source_artist_rank"])
+            + 0.5 * connection["similarity"]
+        )
+    )
 
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
